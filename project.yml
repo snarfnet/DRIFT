@@ -20,7 +20,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.tokyonasu.Drift
         PRODUCT_NAME: DRIFT
         TARGETED_DEVICE_FAMILY: "1"
-        ASSETCATALOG_COMPILER_APPICON_NAME: ""
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: DRIFT
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
@@ -28,4 +28,3 @@ targets:
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         DEVELOPMENT_TEAM: 83VGKGSQUH
         CODE_SIGN_STYLE: Automatic
-
