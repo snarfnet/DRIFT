@@ -390,8 +390,8 @@ private struct DualDial: View {
             .frame(width: 250, height: 250)
 
             VStack(spacing: 14) {
-                SliderRow(label: "TEMPO", value: $tempo, range: 80...160, color: .driftAcid, valueText: "\(tempo, specifier: "%.0f") BPM")
-                SliderRow(label: "INTENSITY", value: $intensity, range: 0...1, color: .driftTeal, valueText: "\(intensity * 100, specifier: "%.0f")%")
+                SliderRow(label: "TEMPO", value: $tempo, range: 80...160, color: .driftAmber, valueText: String(format: "%.0f BPM", tempo))
+                SliderRow(label: "INTENSITY", value: $intensity, range: 0...1, color: .driftLeaf, valueText: String(format: "%.0f%%", intensity * 100))
             }
         }
         .frame(maxWidth: .infinity)
@@ -410,9 +410,9 @@ private struct RotorBody: View {
                         endRadius: 150
                     )
                 )
-                .overlay(Circle().stroke(.driftRust.opacity(0.62), lineWidth: 7))
+                .overlay(Circle().stroke(Color.driftRust.opacity(0.62), lineWidth: 7))
                 .overlay(Circle().stroke(.black.opacity(0.82), lineWidth: 13).padding(-2))
-                .overlay(Circle().stroke(.driftBone.opacity(0.12), lineWidth: 1).padding(6))
+                .overlay(Circle().stroke(Color.driftBone.opacity(0.12), lineWidth: 1).padding(6))
                 .shadow(color: .black.opacity(0.85), radius: 24, x: 0, y: 18)
 
             ForEach(0..<10, id: \.self) { index in
@@ -906,23 +906,7 @@ private struct StyleButton: View {
                 .foregroundColor(isSelected ? .driftBlack : .driftBone.opacity(0.68))
                 .frame(maxWidth: .infinity)
                 .frame(height: 48)
-                .background(
-                    ZStack {
-                        ChippedPad()
-                            .fill(
-                                LinearGradient(
-                                    colors: isSelected ? [.driftAmber, .driftLeaf.opacity(0.8)] : [.driftConcrete.opacity(0.5), .driftCanopy.opacity(0.6)],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                        if isSelected {
-                            UnevenVine()
-                                .stroke(Color.driftMoss.opacity(0.52), style: StrokeStyle(lineWidth: 2, lineCap: .round))
-                                .padding(.horizontal, 10)
-                        }
-                    }
-                )
+                .background(StyleButtonBackground(isSelected: isSelected))
                 .overlay(
                     ChippedPad()
                         .stroke(isSelected ? Color.driftBone.opacity(0.36) : Color.driftMoss.opacity(0.26), lineWidth: 1)
@@ -931,6 +915,36 @@ private struct StyleButton: View {
                 .shadow(color: isSelected ? Color.driftAmber.opacity(0.24) : .clear, radius: 10, x: 0, y: 0)
         }
         .buttonStyle(.plain)
+    }
+}
+
+private struct StyleButtonBackground: View {
+    let isSelected: Bool
+
+    private var gradientColors: [Color] {
+        if isSelected {
+            return [Color.driftAmber, Color.driftLeaf.opacity(0.8)]
+        }
+        return [Color.driftConcrete.opacity(0.5), Color.driftCanopy.opacity(0.6)]
+    }
+
+    var body: some View {
+        ZStack {
+            ChippedPad()
+                .fill(
+                    LinearGradient(
+                        colors: gradientColors,
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+
+            if isSelected {
+                UnevenVine()
+                    .stroke(Color.driftMoss.opacity(0.52), style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                    .padding(.horizontal, 10)
+            }
+        }
     }
 }
 
@@ -943,25 +957,18 @@ private struct ActionButton: View {
 
     var body: some View {
         Button(action: action) {
-            Label(title, systemImage: icon)
-                .font(.system(size: 13, weight: .black, design: .monospaced))
-                .tracking(1.3)
+            HStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.system(size: 13, weight: .black))
+
+                Text(title)
+                    .font(.system(size: 13, weight: .black, design: .monospaced))
+                    .tracking(1.3)
+            }
                 .foregroundColor(foreground)
                 .frame(maxWidth: .infinity)
                 .frame(height: 54)
-                .background(
-                    ZStack {
-                        ChippedPad()
-                            .fill(LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing))
-                        Rectangle()
-                            .fill(Color.black.opacity(0.18))
-                            .frame(height: 7)
-                            .offset(y: 18)
-                        UnevenVine()
-                            .stroke(Color.driftMoss.opacity(0.4), style: StrokeStyle(lineWidth: 2, lineCap: .round))
-                            .padding(.horizontal, 18)
-                    }
-                )
+                .background(ActionButtonBackground(colors: colors))
                 .overlay(
                     ChippedPad()
                         .stroke(Color.driftBone.opacity(0.28), lineWidth: 1)
@@ -970,6 +977,26 @@ private struct ActionButton: View {
                 .shadow(color: colors.first?.opacity(0.26) ?? .clear, radius: 12, x: 0, y: 0)
         }
         .buttonStyle(.plain)
+    }
+}
+
+private struct ActionButtonBackground: View {
+    let colors: [Color]
+
+    var body: some View {
+        ZStack {
+            ChippedPad()
+                .fill(LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing))
+
+            Rectangle()
+                .fill(Color.black.opacity(0.18))
+                .frame(height: 7)
+                .offset(y: 18)
+
+            UnevenVine()
+                .stroke(Color.driftMoss.opacity(0.4), style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                .padding(.horizontal, 18)
+        }
     }
 }
 
