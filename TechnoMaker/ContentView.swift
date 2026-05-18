@@ -835,10 +835,7 @@ private struct Equalizer: View {
     var body: some View {
         HStack(alignment: .bottom, spacing: 3) {
             ForEach(0..<28, id: \.self) { index in
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(index % 5 == 0 ? Color.driftAmber : Color.driftLeaf)
-                    .frame(width: 5, height: CGFloat(isPlaying ? ((index * 9) % 28 + 8) : ((index * 5) % 15 + 5)))
-                    .opacity(isPlaying ? 0.95 : 0.3)
+                EqualizerBar(index: index, isPlaying: isPlaying)
             }
         }
         .frame(maxWidth: .infinity, minHeight: 36, alignment: .bottomLeading)
@@ -846,6 +843,27 @@ private struct Equalizer: View {
         .background(Color.driftCanopy.opacity(0.58))
         .clipShape(RoundedRectangle(cornerRadius: 6))
         .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.driftMoss.opacity(0.22), lineWidth: 1))
+    }
+}
+
+private struct EqualizerBar: View {
+    let index: Int
+    let isPlaying: Bool
+
+    private var barColor: Color {
+        index % 5 == 0 ? .driftAmber : .driftLeaf
+    }
+
+    private var barHeight: CGFloat {
+        let height = isPlaying ? ((index * 9) % 28 + 8) : ((index * 5) % 15 + 5)
+        return CGFloat(height)
+    }
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: 2)
+            .fill(barColor)
+            .frame(width: 5, height: barHeight)
+            .opacity(isPlaying ? 0.95 : 0.3)
     }
 }
 
