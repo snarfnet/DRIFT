@@ -406,6 +406,109 @@ async function updatePricing() {
   }
 }
 
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function getReviewSubmissionItems(submissionId) {
+  const response = await api('GET', `/v1/reviewSubmissions/${submissionId}/items?limit=20`);
+  return response.data || [];
+}
+
+async function getOrCreateReviewSubmission() {
+  const response = await api('GET', `/v1/reviewSubmissions?filter[app]=${APP_ID}&filter[platform]=IOS&limit=20`);
+  const submissions = response.data || [];
+  const active = submissions.find((submission) => ['WAITING_FOR_REVIEW', 'IN_REVIEW'].includes(submission.attributes.state));
+  if (active) return { submission: active, alreadySubmitted: true };
+
+  let reusable = null;
+  for (const submission of submissions) {
+    const state = submission.attributes.state;
+    if (state === 'COMPLETE' || state === 'CANCELED') continue;
+
+    const items = await getReviewSubmissionItems(submission.id);
+    for (const item of items) {
+      await api('DELETE', `/v1/reviewSubmissionItems/${item.id}`);
+    }
+
+    if (state === 'READY_FOR_REVIEW' && !reusable) {
+      reusable = submission;
+      continue;
+    }
+
+    await api('PATCH', `/v1/reviewSubmissions/${submission.id}`, {
+      data: {
+        type: 'reviewSubmissions',
+        id: submission.id,
+        attributes: { canceled: true },
+      },
+    });
+  }
+
+  if (reusable) return { submission: reusable, alreadySubmitted: false };
+
+  const created = await api('POST', '/v1/reviewSubmissions', {
+    data: {
+      type: 'reviewSubmissions',
+      attributes: { platform: 'IOS' },
+      relationships: {
+        app: { data: { type: 'apps', id: APP_ID } },
+      },
+    },
+  });
+  return { submission: created.data, alreadySubmitted: false };
+}
+
+async function submitForReview() {
+  const version = await getAppStoreVersion();
+  console.log(`Version: ${version.attributes.versionString} (${version.attributes.appStoreState})`);
+  await attachBuild(version.id);
+
+  const { submission, alreadySubmitted } = await getOrCreateReviewSubmission();
+  if (alreadySubmitted) {
+    console.log(`Already submitted: ${submission.id} (${submission.attributes.state})`);
+    return;
+  }
+
+  console.log(`Review submission: ${submission.id}`);
+  let itemCreated = false;
+  for (let attempt = 1; attempt <= 5; attempt += 1) {
+    try {
+      await api('POST', '/v1/reviewSubmissionItems', {
+        data: {
+          type: 'reviewSubmissionItems',
+          relationships: {
+            reviewSubmission: { data: { type: 'reviewSubmissions', id: submission.id } },
+            appStoreVersion: { data: { type: 'appStoreVersions', id: version.id } },
+          },
+        },
+      });
+      itemCreated = true;
+      break;
+    } catch (error) {
+      if (attempt === 5) throw error;
+      console.log(`Review item not ready, retrying (${attempt}/5)...`);
+      await delay(15000);
+    }
+  }
+
+  if (!itemCreated) throw new Error('Could not add app version to review submission.');
+
+  for (let attempt = 1; attempt <= 5; attempt += 1) {
+    const result = await api('PATCH', `/v1/reviewSubmissions/${submission.id}`, {
+      data: {
+        type: 'reviewSubmissions',
+        id: submission.id,
+        attributes: { submitted: true },
+      },
+    });
+    const state = result.data?.attributes?.state;
+    console.log(`Submission state: ${state || 'unknown'} (attempt ${attempt})`);
+    if (state === 'WAITING_FOR_REVIEW' || state === 'IN_REVIEW') return;
+    await delay(15000);
+  }
+}
+
 async function sync(options = {}) {
   const { screenshots = true } = options;
   const version = await getAppStoreVersion();
@@ -426,15 +529,17 @@ async function status() {
   const app = await api('GET', `/v1/apps/${APP_ID}`);
   const versions = await api('GET', `/v1/apps/${APP_ID}/appStoreVersions?filter[platform]=IOS&limit=10`);
   const builds = await api('GET', `/v1/builds?filter[app]=${APP_ID}&sort=-uploadedDate&limit=5`);
+  const submissions = await api('GET', `/v1/reviewSubmissions?filter[app]=${APP_ID}&filter[platform]=IOS&limit=10`);
   console.log(JSON.stringify({
     app: app.data.attributes,
     versions: versions.data.map((version) => ({ id: version.id, versionString: version.attributes.versionString, state: version.attributes.appStoreState })),
     builds: builds.data.map((build) => ({ id: build.id, version: build.attributes.version, buildNumber: build.attributes.buildNumber, state: build.attributes.processingState })),
+    submissions: submissions.data.map((submission) => ({ id: submission.id, state: submission.attributes.state })),
   }, null, 2));
 }
 
 const command = process.argv[2] || 'status';
-const actions = { sync, status };
+const actions = { sync, status, submit: submitForReview };
 (actions[command] || status)().catch((error) => {
   console.error(error.message);
   process.exit(1);
