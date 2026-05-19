@@ -35,8 +35,8 @@ const metadata = {
     '短いループのアイデア出し、テクノの雰囲気作り、音のスケッチに使えます。',
   ].join('\n'),
   keywords: 'テクノ,自動作曲,シンセ,ドラム,シーケンサー,ミニマル,音楽制作,BPM,ループ',
-  supportUrl: 'https://github.com/snarfnet/DRIFT',
-  marketingUrl: 'https://github.com/snarfnet/DRIFT',
+  supportUrl: 'https://snarfnet.github.io/DRIFT/',
+  marketingUrl: 'https://snarfnet.github.io/DRIFT/',
 };
 
 const appInfoMetadata = {
