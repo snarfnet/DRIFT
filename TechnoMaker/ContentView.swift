@@ -9,9 +9,10 @@ struct ContentView: View {
         ZStack {
             ConsoleBackground()
 
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 16) {
-                    HeaderPanel(isPlaying: generator.isPlaying, tempo: generator.tempo)
+            VStack(spacing: 0) {
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 16) {
+                        HeaderPanel(isPlaying: generator.isPlaying, tempo: generator.tempo)
 
                     PlaybackStrip(
                         isPlaying: generator.isPlaying,
@@ -51,14 +52,44 @@ struct ContentView: View {
                         EmptyPatternPanel()
                     }
 
-                    ChannelStrip()
+                        ChannelStrip()
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 18)
+                    .padding(.bottom, 18)
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 18)
-                .padding(.bottom, 28)
+
+                AdRail()
+                    .padding(.horizontal, 12)
+                    .padding(.top, 8)
+                    .padding(.bottom, 8)
             }
         }
         .preferredColorScheme(.dark)
+    }
+}
+
+private struct AdRail: View {
+    var body: some View {
+        AdMobBannerView()
+            .frame(width: 320, height: 50)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 7)
+            .background(
+                LinearGradient(
+                    colors: [Color.black.opacity(0.52), Color.driftCanopy.opacity(0.82)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
+            .overlay(alignment: .top) {
+                UnevenVine()
+                    .stroke(Color.driftMoss.opacity(0.36), style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                    .padding(.horizontal, 18)
+                    .frame(height: 10)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.driftMoss.opacity(0.25), lineWidth: 1))
     }
 }
 

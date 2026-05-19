@@ -289,7 +289,7 @@ async function updateReviewDetails(versionId) {
         demoAccountRequired: false,
         demoAccountName: '',
         demoAccountPassword: '',
-        notes: 'DRIFT is an automatic techno music generator. It uses AVAudioEngine for local audio playback, does not require login, and does not collect personal data. All generated patterns and playback happen on device.',
+        notes: 'DRIFT is an automatic techno music generator. It uses AVAudioEngine for local audio playback and Google AdMob for banner ads. Login is not required. Generated patterns and playback happen on device.',
       },
     },
   };
@@ -333,7 +333,7 @@ async function updateAgeRatingAndCategory() {
         unrestrictedWebAccess: false,
         messagingAndChat: false,
         ageAssurance: false,
-        advertising: false,
+        advertising: true,
         parentalControls: false,
         userGeneratedContent: false,
         healthOrWellnessTopics: false,
@@ -439,4 +439,3 @@ const actions = { sync, status };
   console.error(error.message);
   process.exit(1);
 });
-

@@ -30,6 +30,7 @@ class TechnoGenerator: NSObject, ObservableObject {
     private func setupAudio() {
         engine = AVAudioEngine()
         mixer = engine?.mainMixerNode
+        configureAudioSession()
 
         // リバーブを追加
         reverbUnit = AVAudioUnitReverb()
@@ -46,6 +47,16 @@ class TechnoGenerator: NSObject, ObservableObject {
             } catch {
                 print("Audio engine error: \(error)")
             }
+        }
+    }
+
+    private func configureAudioSession() {
+        do {
+            let session = AVAudioSession.sharedInstance()
+            try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
+            try session.setActive(true)
+        } catch {
+            print("Audio session error: \(error)")
         }
     }
 
@@ -436,13 +447,17 @@ class TechnoGenerator: NSObject, ObservableObject {
 
     private func playAudioSamples(_ samples: [Float]) {
         guard let mixer = mixer, let engine = engine else { return }
+        guard !samples.isEmpty else { return }
 
-        let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1)!
-        let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(samples.count))!
+        guard let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1),
+              let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(samples.count)) else {
+            return
+        }
 
         buffer.frameLength = AVAudioFrameCount(samples.count)
-        for (i, sample) in samples.enumerated() {
-            buffer.floatChannelData?[0][i] = sample
+        guard let channelData = buffer.floatChannelData?[0] else { return }
+        for (index, sample) in samples.enumerated() {
+            channelData[index] = sample
         }
 
         let playerNode = AVAudioPlayerNode()
@@ -452,11 +467,18 @@ class TechnoGenerator: NSObject, ObservableObject {
         do {
             try engine.start()
             playerNode.play()
-            playerNode.scheduleBuffer(buffer) {
-                self.engine?.detach(playerNode)
+            playerNode.scheduleBuffer(buffer) { [weak self, weak playerNode] in
+                DispatchQueue.main.async {
+                    guard let self = self, let playerNode = playerNode else { return }
+                    playerNode.stop()
+                    if playerNode.engine != nil {
+                        self.engine?.detach(playerNode)
+                    }
+                }
             }
         } catch {
             print("Error playing audio: \(error)")
+            engine.detach(playerNode)
         }
     }
 }
