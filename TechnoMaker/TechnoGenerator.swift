@@ -275,7 +275,7 @@ class TechnoGenerator: NSObject, ObservableObject {
     }
 
     // マスター音量生成用バッファ
-    private let sampleRate = 44100.0
+    private var sampleRate = 44100.0
     private var audioBuffer = [Float]()
     private var bufferIndex = 0
 
@@ -284,17 +284,23 @@ class TechnoGenerator: NSObject, ObservableObject {
     private let poolSize = 12
     private var poolIndex = 0
     private var isEngineConfigured = false
+    private var outputFormat: AVAudioFormat?
 
     private func ensureEngineReady() {
         guard !isEngineConfigured else { return }
-        setupAudio()
         configureAudioSession()
+        setupAudio()
         guard let engine = engine, let mixer = mixer else { return }
+
+        // ハードウェアの実サンプルレートを使用（iPad=48000, iPhone=44100等）
+        let hwFormat = mixer.outputFormat(forBus: 0)
+        sampleRate = hwFormat.sampleRate > 0 ? hwFormat.sampleRate : 44100.0
+        guard let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1) else { return }
+        outputFormat = format
 
         for _ in 0..<poolSize {
             let node = AVAudioPlayerNode()
             engine.attach(node)
-            let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1)!
             engine.connect(node, to: mixer, format: format)
             playerPool.append(node)
         }
@@ -323,6 +329,7 @@ class TechnoGenerator: NSObject, ObservableObject {
         playerPool.removeAll()
         poolIndex = 0
         isEngineConfigured = false
+        outputFormat = nil
     }
 
     // 808 キック音生成（スタイル依存）
@@ -476,9 +483,8 @@ class TechnoGenerator: NSObject, ObservableObject {
     private func playAudioSamples(_ samples: [Float]) {
         guard !samples.isEmpty else { return }
         ensureEngineReady()
-        guard !playerPool.isEmpty else { return }
+        guard !playerPool.isEmpty, let format = outputFormat else { return }
 
-        let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1)!
         guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(samples.count)) else {
             return
         }
