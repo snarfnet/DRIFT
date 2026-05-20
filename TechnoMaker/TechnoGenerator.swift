@@ -271,12 +271,59 @@ class TechnoGenerator: NSObject, ObservableObject {
         stepIndex = 0
         currentStep = nil
         drumEnvelopes.removeAll()
+        teardownEngine()
     }
 
     // マスター音量生成用バッファ
     private let sampleRate = 44100.0
     private var audioBuffer = [Float]()
     private var bufferIndex = 0
+
+    // 再利用可能なプレイヤーノードプール
+    private var playerPool: [AVAudioPlayerNode] = []
+    private let poolSize = 12
+    private var poolIndex = 0
+    private var isEngineConfigured = false
+
+    private func ensureEngineReady() {
+        guard !isEngineConfigured else { return }
+        setupAudio()
+        configureAudioSession()
+        guard let engine = engine, let mixer = mixer else { return }
+
+        for _ in 0..<poolSize {
+            let node = AVAudioPlayerNode()
+            engine.attach(node)
+            let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1)!
+            engine.connect(node, to: mixer, format: format)
+            playerPool.append(node)
+        }
+
+        do {
+            try engine.start()
+            for node in playerPool {
+                node.play()
+            }
+        } catch {
+            print("Engine start error: \(error)")
+        }
+        isEngineConfigured = true
+    }
+
+    private func teardownEngine() {
+        for node in playerPool {
+            node.stop()
+        }
+        engine?.stop()
+        for node in playerPool {
+            if node.engine != nil {
+                engine?.detach(node)
+            }
+        }
+        playerPool.removeAll()
+        poolIndex = 0
+        isEngineConfigured = false
+    }
 
     // 808 キック音生成（スタイル依存）
     private func playKick() {
@@ -427,14 +474,12 @@ class TechnoGenerator: NSObject, ObservableObject {
     }
 
     private func playAudioSamples(_ samples: [Float]) {
-        if engine == nil || mixer == nil {
-            setupAudio()
-        }
-        guard let mixer = mixer, let engine = engine else { return }
         guard !samples.isEmpty else { return }
+        ensureEngineReady()
+        guard !playerPool.isEmpty else { return }
 
-        guard let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1),
-              let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(samples.count)) else {
+        let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1)!
+        guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(samples.count)) else {
             return
         }
 
@@ -444,27 +489,9 @@ class TechnoGenerator: NSObject, ObservableObject {
             channelData[index] = sample
         }
 
-        let playerNode = AVAudioPlayerNode()
-        engine.attach(playerNode)
-        engine.connect(playerNode, to: mixer, format: format)
-
-        do {
-            configureAudioSession()
-            try engine.start()
-            playerNode.play()
-            playerNode.scheduleBuffer(buffer) { [weak self, weak playerNode] in
-                DispatchQueue.main.async {
-                    guard let self = self, let playerNode = playerNode else { return }
-                    playerNode.stop()
-                    if playerNode.engine != nil {
-                        self.engine?.detach(playerNode)
-                    }
-                }
-            }
-        } catch {
-            print("Error playing audio: \(error)")
-            engine.detach(playerNode)
-        }
+        let node = playerPool[poolIndex % poolSize]
+        poolIndex += 1
+        node.scheduleBuffer(buffer, completionHandler: nil)
     }
 }
 
