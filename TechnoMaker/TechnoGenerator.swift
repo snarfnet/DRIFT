@@ -226,6 +226,10 @@ class TechnoGenerator: NSObject, ObservableObject {
     func playTechno(onNote: @escaping (Double, String) -> Void) {
         guard let pattern = generatedPattern else { return }
 
+        // Ensure audio engine is ready before starting playback
+        ensureEngineReady()
+        guard isEngineConfigured else { return }
+
         isPlaying = true
         stepIndex = 0
         currentStep = 0
@@ -481,9 +485,9 @@ class TechnoGenerator: NSObject, ObservableObject {
     }
 
     private func playAudioSamples(_ samples: [Float]) {
-        guard !samples.isEmpty else { return }
-        ensureEngineReady()
+        guard !samples.isEmpty, isEngineConfigured else { return }
         guard !playerPool.isEmpty, let format = outputFormat else { return }
+        guard let engine = engine, engine.isRunning else { return }
 
         guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(samples.count)) else {
             return
