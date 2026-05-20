@@ -428,7 +428,11 @@ async function getOrCreateReviewSubmission() {
 
     const items = await getReviewSubmissionItems(submission.id);
     for (const item of items) {
-      await api('DELETE', `/v1/reviewSubmissionItems/${item.id}`);
+      try {
+        await api('DELETE', `/v1/reviewSubmissionItems/${item.id}`);
+      } catch (error) {
+        console.log(`Review item cleanup skipped: ${item.id}`);
+      }
     }
 
     if (state === 'READY_FOR_REVIEW' && !reusable) {
@@ -436,13 +440,17 @@ async function getOrCreateReviewSubmission() {
       continue;
     }
 
-    await api('PATCH', `/v1/reviewSubmissions/${submission.id}`, {
-      data: {
-        type: 'reviewSubmissions',
-        id: submission.id,
-        attributes: { canceled: true },
-      },
-    });
+    try {
+      await api('PATCH', `/v1/reviewSubmissions/${submission.id}`, {
+        data: {
+          type: 'reviewSubmissions',
+          id: submission.id,
+          attributes: { canceled: true },
+        },
+      });
+    } catch (error) {
+      console.log(`Review submission cleanup skipped: ${submission.id} (${state})`);
+    }
   }
 
   if (reusable) return { submission: reusable, alreadySubmitted: false };
