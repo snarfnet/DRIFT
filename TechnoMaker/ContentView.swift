@@ -59,10 +59,12 @@ struct ContentView: View {
                     .padding(.bottom, 18)
                 }
 
-                AdRail()
-                    .padding(.horizontal, 12)
-                    .padding(.top, 8)
-                    .padding(.bottom, 8)
+                if RuntimeEnvironment.isNativePhone {
+                    AdRail()
+                        .padding(.horizontal, 12)
+                        .padding(.top, 8)
+                        .padding(.bottom, 8)
+                }
             }
         }
         .preferredColorScheme(.dark)

@@ -6,7 +6,7 @@ class DriftAppDelegate: NSObject, UIApplicationDelegate {
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
-        if UIDevice.current.userInterfaceIdiom == .phone {
+        if RuntimeEnvironment.isNativePhone {
             DispatchQueue.main.async {
                 MobileAds.shared.start()
             }

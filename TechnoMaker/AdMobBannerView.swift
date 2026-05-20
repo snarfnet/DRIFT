@@ -1,5 +1,6 @@
 import SwiftUI
 import GoogleMobileAds
+import UIKit
 
 private let driftAdMobBannerUnitID = "ca-app-pub-9404799280370656/8085919905"
 
@@ -7,6 +8,10 @@ struct AdMobBannerView: UIViewControllerRepresentable {
     func makeUIViewController(context: Context) -> UIViewController {
         let controller = UIViewController()
         controller.view.backgroundColor = .clear
+
+        guard RuntimeEnvironment.isNativePhone else {
+            return controller
+        }
 
         guard let appID = Bundle.main.object(forInfoDictionaryKey: "GADApplicationIdentifier") as? String,
               !appID.isEmpty else {

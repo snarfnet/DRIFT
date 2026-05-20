@@ -24,30 +24,11 @@ class TechnoGenerator: NSObject, ObservableObject {
 
     override init() {
         super.init()
-        setupAudio()
     }
 
     private func setupAudio() {
         engine = AVAudioEngine()
         mixer = engine?.mainMixerNode
-        configureAudioSession()
-
-        // リバーブを追加
-        reverbUnit = AVAudioUnitReverb()
-        reverbUnit?.loadFactoryPreset(.mediumHall)
-        reverbUnit?.wetDryMix = 30
-
-        if let engine = engine, let mixer = mixer, let reverb = reverbUnit {
-            engine.attach(reverb)
-            engine.connect(mixer, to: reverb, format: nil)
-            engine.connect(reverb, to: engine.outputNode, format: nil)
-
-            do {
-                try engine.start()
-            } catch {
-                print("Audio engine error: \(error)")
-            }
-        }
     }
 
     private func configureAudioSession() {
@@ -446,6 +427,9 @@ class TechnoGenerator: NSObject, ObservableObject {
     }
 
     private func playAudioSamples(_ samples: [Float]) {
+        if engine == nil || mixer == nil {
+            setupAudio()
+        }
         guard let mixer = mixer, let engine = engine else { return }
         guard !samples.isEmpty else { return }
 
@@ -465,6 +449,7 @@ class TechnoGenerator: NSObject, ObservableObject {
         engine.connect(playerNode, to: mixer, format: format)
 
         do {
+            configureAudioSession()
             try engine.start()
             playerNode.play()
             playerNode.scheduleBuffer(buffer) { [weak self, weak playerNode] in
