@@ -25,7 +25,7 @@ struct DriftApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .onChange(of: scenePhase) { _, newPhase in
+                .onChange(of: scenePhase) { newPhase in
                     if newPhase == .active && !attRequested {
                         requestATT()
                     }
