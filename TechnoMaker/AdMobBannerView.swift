@@ -9,7 +9,7 @@ struct AdMobBannerView: UIViewControllerRepresentable {
         let controller = UIViewController()
         controller.view.backgroundColor = .clear
 
-        guard RuntimeEnvironment.isNativePhone else {
+        guard RuntimeEnvironment.isNativeDevice else {
             return controller
         }
 

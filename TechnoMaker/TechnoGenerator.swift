@@ -35,7 +35,9 @@ class TechnoGenerator: NSObject, ObservableObject {
         do {
             let session = AVAudioSession.sharedInstance()
             try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
-            try session.setActive(true)
+            // iPad では preferred sample rate を明示設定してフォーマット不一致を防ぐ
+            try session.setPreferredSampleRate(48000)
+            try session.setActive(true, options: [])
         } catch {
             print("Audio session error: \(error)")
         }
@@ -296,10 +298,22 @@ class TechnoGenerator: NSObject, ObservableObject {
         setupAudio()
         guard let engine = engine, let mixer = mixer else { return }
 
-        // ハードウェアの実サンプルレートを使用（iPad=48000, iPhone=44100等）
+        // ハードウェアの実サンプルレートを取得（iPad=48000, iPhone=44100等）
+        // engine.prepare() を先に呼んでフォーマットを確定させる（iPad クラッシュ対策）
+        engine.prepare()
         let hwFormat = mixer.outputFormat(forBus: 0)
-        sampleRate = hwFormat.sampleRate > 0 ? hwFormat.sampleRate : 44100.0
-        guard let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1) else { return }
+        let hwSampleRate = hwFormat.sampleRate
+        // サンプルレートが0や無効な場合はAVAudioSessionから取得
+        if hwSampleRate > 0 {
+            sampleRate = hwSampleRate
+        } else {
+            sampleRate = AVAudioSession.sharedInstance().sampleRate > 0
+                ? AVAudioSession.sharedInstance().sampleRate
+                : 44100.0
+        }
+        // ミキサーの出力チャンネル数に合わせたフォーマットを使用（iPad/iPhone互換）
+        let channelCount = hwFormat.channelCount > 0 ? hwFormat.channelCount : 2
+        guard let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: channelCount) else { return }
         outputFormat = format
 
         for _ in 0..<poolSize {
@@ -316,6 +330,12 @@ class TechnoGenerator: NSObject, ObservableObject {
             }
         } catch {
             print("Engine start error: \(error)")
+            // エンジン起動失敗時はクリーンアップ
+            for node in playerPool {
+                if node.engine != nil { engine.detach(node) }
+            }
+            playerPool.removeAll()
+            return
         }
         isEngineConfigured = true
     }
@@ -494,9 +514,13 @@ class TechnoGenerator: NSObject, ObservableObject {
         }
 
         buffer.frameLength = AVAudioFrameCount(samples.count)
-        guard let channelData = buffer.floatChannelData?[0] else { return }
-        for (index, sample) in samples.enumerated() {
-            channelData[index] = sample
+        guard let channelData = buffer.floatChannelData else { return }
+        let channelCount = Int(format.channelCount)
+        // 全チャンネルに同じモノラルデータをコピー（iPad=2ch, iPhone=1ch対応）
+        for ch in 0..<channelCount {
+            for (index, sample) in samples.enumerated() {
+                channelData[ch][index] = sample
+            }
         }
 
         let node = playerPool[poolIndex % poolSize]

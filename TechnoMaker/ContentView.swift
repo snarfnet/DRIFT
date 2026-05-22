@@ -59,7 +59,7 @@ struct ContentView: View {
                     .padding(.bottom, 18)
                 }
 
-                if RuntimeEnvironment.isNativePhone {
+                if RuntimeEnvironment.isNativeDevice {
                     AdRail()
                         .padding(.horizontal, 12)
                         .padding(.top, 8)
