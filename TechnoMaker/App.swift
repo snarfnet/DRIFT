@@ -2,29 +2,21 @@ import SwiftUI
 import GoogleMobileAds
 import AppTrackingTransparency
 
-class DriftAppDelegate: NSObject, UIApplicationDelegate {
-    func application(
-        _ application: UIApplication,
-        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
-    ) -> Bool {
-        if RuntimeEnvironment.isNativeDevice {
-            DispatchQueue.main.async {
-                MobileAds.shared.start()
-            }
-        }
-        return true
-    }
-}
-
 @main
 struct DriftApp: App {
-    @UIApplicationDelegateAdaptor(DriftAppDelegate.self) var appDelegate
     @Environment(\.scenePhase) private var scenePhase
     @State private var attRequested = false
+    @State private var adMobStarted = false
 
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .onAppear {
+                    if RuntimeEnvironment.isNativeDevice && !adMobStarted {
+                        adMobStarted = true
+                        MobileAds.shared.start()
+                    }
+                }
                 .onChange(of: scenePhase) { newPhase in
                     if newPhase == .active && !attRequested {
                         requestATT()

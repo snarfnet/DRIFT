@@ -27,16 +27,18 @@ class TechnoGenerator: NSObject, ObservableObject {
     }
 
     private func setupAudio() {
-        engine = AVAudioEngine()
-        mixer = engine?.mainMixerNode
+        let newEngine = AVAudioEngine()
+        let newMixer = AVAudioMixerNode()
+        newEngine.attach(newMixer)
+        engine = newEngine
+        mixer = newMixer
     }
 
     private func configureAudioSession() {
         do {
             let session = AVAudioSession.sharedInstance()
             try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
-            // iPad では preferred sample rate を明示設定してフォーマット不一致を防ぐ
-            try session.setPreferredSampleRate(48000)
+            try session.setPreferredSampleRate(44100)
             try session.setActive(true, options: [])
         } catch {
             print("Audio session error: \(error)")
@@ -298,28 +300,26 @@ class TechnoGenerator: NSObject, ObservableObject {
         setupAudio()
         guard let engine = engine, let mixer = mixer else { return }
 
-        // ハードウェアの実サンプルレートを取得（iPad=48000, iPhone=44100等）
-        // engine.prepare() を先に呼んでフォーマットを確定させる（iPad クラッシュ対策）
+        // iPad 安全フォーマット: 固定 44100/2ch でプレイヤー→ミキサー接続
+        let safeSampleRate = 44100.0
+        let safeChannels: AVAudioChannelCount = 2
+        guard let safeFormat = AVAudioFormat(standardFormatWithSampleRate: safeSampleRate, channels: safeChannels) else { return }
+
+        // ミキサー→出力ノード接続: ハードウェアフォーマットを取得して使う
         engine.prepare()
-        let hwFormat = mixer.outputFormat(forBus: 0)
-        let hwSampleRate = hwFormat.sampleRate
-        // サンプルレートが0や無効な場合はAVAudioSessionから取得
-        if hwSampleRate > 0 {
-            sampleRate = hwSampleRate
-        } else {
-            sampleRate = AVAudioSession.sharedInstance().sampleRate > 0
-                ? AVAudioSession.sharedInstance().sampleRate
-                : 44100.0
-        }
-        // ミキサーの出力チャンネル数に合わせたフォーマットを使用（iPad/iPhone互換）
-        let channelCount = hwFormat.channelCount > 0 ? hwFormat.channelCount : 2
-        guard let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: channelCount) else { return }
-        outputFormat = format
+        let outputNodeFormat = engine.outputNode.outputFormat(forBus: 0)
+        let connectFormat = (outputNodeFormat.sampleRate > 0 && outputNodeFormat.channelCount > 0)
+            ? outputNodeFormat
+            : safeFormat
+        engine.connect(mixer, to: engine.outputNode, format: connectFormat)
+
+        sampleRate = safeSampleRate
+        outputFormat = safeFormat
 
         for _ in 0..<poolSize {
             let node = AVAudioPlayerNode()
             engine.attach(node)
-            engine.connect(node, to: mixer, format: format)
+            engine.connect(node, to: mixer, format: safeFormat)
             playerPool.append(node)
         }
 
@@ -330,7 +330,6 @@ class TechnoGenerator: NSObject, ObservableObject {
             }
         } catch {
             print("Engine start error: \(error)")
-            // エンジン起動失敗時はクリーンアップ
             for node in playerPool {
                 if node.engine != nil { engine.detach(node) }
             }
