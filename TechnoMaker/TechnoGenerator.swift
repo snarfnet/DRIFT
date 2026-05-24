@@ -230,6 +230,12 @@ class TechnoGenerator: NSObject, ObservableObject {
     func playTechno(onNote: @escaping (Double, String) -> Void) {
         guard let pattern = generatedPattern else { return }
 
+        // 既存の再生を安全に停止
+        if isPlaying {
+            playbackTimer?.invalidate()
+            playbackTimer = nil
+        }
+
         // Ensure audio engine is ready before starting playback
         ensureEngineReady()
         guard isEngineConfigured else { return }
@@ -305,23 +311,26 @@ class TechnoGenerator: NSObject, ObservableObject {
         let safeChannels: AVAudioChannelCount = 2
         guard let safeFormat = AVAudioFormat(standardFormatWithSampleRate: safeSampleRate, channels: safeChannels) else { return }
 
-        // ミキサー→出力ノード接続: ハードウェアフォーマットを取得して使う
-        engine.prepare()
-        let outputNodeFormat = engine.outputNode.outputFormat(forBus: 0)
-        let connectFormat = (outputNodeFormat.sampleRate > 0 && outputNodeFormat.channelCount > 0)
-            ? outputNodeFormat
-            : safeFormat
-        engine.connect(mixer, to: engine.outputNode, format: connectFormat)
-
         sampleRate = safeSampleRate
         outputFormat = safeFormat
 
+        // プレイヤーノードをアタッチ＆ミキサーに接続（engine.start() 前に全接続を完了）
         for _ in 0..<poolSize {
             let node = AVAudioPlayerNode()
             engine.attach(node)
             engine.connect(node, to: mixer, format: safeFormat)
             playerPool.append(node)
         }
+
+        // ミキサー→出力ノード接続: ハードウェアフォーマットを取得して使う
+        let outputNodeFormat = engine.outputNode.outputFormat(forBus: 0)
+        let connectFormat = (outputNodeFormat.sampleRate > 0 && outputNodeFormat.channelCount > 0)
+            ? outputNodeFormat
+            : safeFormat
+        engine.connect(mixer, to: engine.outputNode, format: connectFormat)
+
+        // 全ノード接続後に prepare → start
+        engine.prepare()
 
         do {
             try engine.start()
@@ -334,6 +343,7 @@ class TechnoGenerator: NSObject, ObservableObject {
                 if node.engine != nil { engine.detach(node) }
             }
             playerPool.removeAll()
+            poolIndex = 0
             return
         }
         isEngineConfigured = true
@@ -522,8 +532,12 @@ class TechnoGenerator: NSObject, ObservableObject {
             }
         }
 
-        let node = playerPool[poolIndex % poolSize]
+        let index = poolIndex % poolSize
+        guard index < playerPool.count else { return }
+        let node = playerPool[index]
         poolIndex += 1
+        // ノードがエンジンに接続済みか確認してからスケジュール
+        guard node.engine != nil else { return }
         node.scheduleBuffer(buffer, completionHandler: nil)
     }
 }

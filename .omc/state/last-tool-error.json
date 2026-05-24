@@ -1,7 +1,7 @@
 {
   "tool_name": "Bash",
-  "tool_input_preview": "{\"command\":\"cd C:/Users/Windows/UnkoMeter && node scripts/app_store_connect_submission.js submit 2>&1\",\"description\":\"Submit UnkoMeter for review\"}",
-  "error": "Exit code 1\nVersion: 1.0 (REJECTED)\nUpdated app info metadata.\nUpdated age rating and category.\nUpdated version and content rights.\nUpdated pricing.\nLocalization: ja\nUpdated metadata.\nUpdated review details.\nAttached build: 7 (undefined)\nHTTP 409 POST /v1/reviewSubmissionItems\n{\n  \"errors\": [\n    {\n      \"id\": \"1e437534-1858-43d6-b3fe-782b2f5ef008\",\n      \"status\": \"409\",\n      \"code\": \"STATE_ERROR.ENTITY_STATE_INVALID\",\n      \"title\": \"appStoreVersions with id '885818390' is not in valid state....",
-  "timestamp": "2026-05-20T10:53:11.146Z",
+  "tool_input_preview": "{\"command\":\"python -c \\\"\\nimport jwt, time, requests, json\\n\\nKEY_ID = 'WDXGY9WX55'\\nISSUER_ID = '2be0734f-943a-4d61-9dc9-5d9045c46fec'\\n\\nwith open('asc_key.p8', 'r') as f:\\n    private_key = f.read(...",
+  "error": "Exit code 1\nTraceback (most recent call last):\r\n  File \"<string>\", line 7, in <module>\r\nFileNotFoundError: [Errno 2] No such file or directory: 'asc_key.p8'",
+  "timestamp": "2026-05-23T21:50:48.113Z",
   "retry_count": 1
 }
