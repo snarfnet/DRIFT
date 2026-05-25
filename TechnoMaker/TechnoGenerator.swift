@@ -38,10 +38,26 @@ class TechnoGenerator: NSObject, ObservableObject {
         do {
             let session = AVAudioSession.sharedInstance()
             try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
-            try session.setPreferredSampleRate(44100)
             try session.setActive(true, options: [])
         } catch {
             print("Audio session error: \(error)")
+        }
+
+        NotificationCenter.default.addObserver(
+            forName: AVAudioSession.interruptionNotification,
+            object: nil, queue: .main
+        ) { [weak self] notification in
+            guard let self,
+                  let info = notification.userInfo,
+                  let typeRaw = info[AVAudioSessionInterruptionTypeKey] as? UInt,
+                  let type = AVAudioSession.InterruptionType(rawValue: typeRaw) else { return }
+            if type == .ended {
+                try? AVAudioSession.sharedInstance().setActive(true, options: [])
+                if self.isPlaying, let engine = self.engine, !engine.isRunning {
+                    try? engine.start()
+                    for node in self.playerPool { node.play() }
+                }
+            }
         }
     }
 
@@ -513,16 +529,26 @@ class TechnoGenerator: NSObject, ObservableObject {
     private func playAudioSamples(_ samples: [Float]) {
         guard !samples.isEmpty, isEngineConfigured else { return }
         guard !playerPool.isEmpty, let format = outputFormat else { return }
-        guard let engine = engine, engine.isRunning else { return }
+        guard let engine = engine else { return }
 
-        guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(samples.count)) else {
+        // Restart engine if it stopped unexpectedly
+        if !engine.isRunning {
+            do {
+                try engine.start()
+                for node in playerPool { node.play() }
+            } catch {
+                return
+            }
+        }
+
+        let frameCount = AVAudioFrameCount(samples.count)
+        guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount) else {
             return
         }
 
-        buffer.frameLength = AVAudioFrameCount(samples.count)
+        buffer.frameLength = frameCount
         guard let channelData = buffer.floatChannelData else { return }
         let channelCount = Int(format.channelCount)
-        // 全チャンネルに同じモノラルデータをコピー（iPad=2ch, iPhone=1ch対応）
         for ch in 0..<channelCount {
             for (index, sample) in samples.enumerated() {
                 channelData[ch][index] = sample
@@ -533,7 +559,6 @@ class TechnoGenerator: NSObject, ObservableObject {
         guard index < playerPool.count else { return }
         let node = playerPool[index]
         poolIndex += 1
-        // ノードがエンジンに接続済みか確認してからスケジュール
         guard node.engine != nil else { return }
         node.scheduleBuffer(buffer, completionHandler: nil)
     }
