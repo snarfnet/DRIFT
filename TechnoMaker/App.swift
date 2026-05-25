@@ -23,27 +23,14 @@ struct DriftApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .onChange(of: scenePhase) { newPhase in
+                .onChange(of: scenePhase) { _, newPhase in
                     if newPhase == .active && !attRequested {
-                        requestATT()
+                        attRequested = true
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                            ATTrackingManager.requestTrackingAuthorization { _ in }
+                        }
                     }
                 }
-        }
-    }
-
-    private func requestATT() {
-        guard RuntimeEnvironment.isNativeDevice else { return }
-        attRequested = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            guard let scene = UIApplication.shared.connectedScenes
-                .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
-                  scene.windows.first(where: { $0.isKeyWindow }) != nil else {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                    ATTrackingManager.requestTrackingAuthorization { _ in }
-                }
-                return
-            }
-            ATTrackingManager.requestTrackingAuthorization { _ in }
         }
     }
 }

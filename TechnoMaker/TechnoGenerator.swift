@@ -306,12 +306,14 @@ class TechnoGenerator: NSObject, ObservableObject {
         setupAudio()
         guard let engine = engine, let mixer = mixer else { return }
 
-        // iPad 安全フォーマット: 固定 44100/2ch でプレイヤー→ミキサー接続
-        let safeSampleRate = 44100.0
-        let safeChannels: AVAudioChannelCount = 2
-        guard let safeFormat = AVAudioFormat(standardFormatWithSampleRate: safeSampleRate, channels: safeChannels) else { return }
+        // Use hardware output format for the entire graph to avoid sample rate mismatch on iOS 26
+        let hwFormat = engine.outputNode.outputFormat(forBus: 0)
+        guard let safeFormat = (hwFormat.sampleRate > 0 && hwFormat.channelCount > 0)
+            ? hwFormat
+            : AVAudioFormat(standardFormatWithSampleRate: 44100, channels: 2)
+        else { return }
 
-        sampleRate = safeSampleRate
+        sampleRate = safeFormat.sampleRate
         outputFormat = safeFormat
 
         // プレイヤーノードをアタッチ＆ミキサーに接続（engine.start() 前に全接続を完了）
@@ -322,12 +324,7 @@ class TechnoGenerator: NSObject, ObservableObject {
             playerPool.append(node)
         }
 
-        // ミキサー→出力ノード接続: ハードウェアフォーマットを取得して使う
-        let outputNodeFormat = engine.outputNode.outputFormat(forBus: 0)
-        let connectFormat = (outputNodeFormat.sampleRate > 0 && outputNodeFormat.channelCount > 0)
-            ? outputNodeFormat
-            : safeFormat
-        engine.connect(mixer, to: engine.outputNode, format: connectFormat)
+        engine.connect(mixer, to: engine.outputNode, format: safeFormat)
 
         // 全ノード接続後に prepare → start
         engine.prepare()
