@@ -8,7 +8,7 @@ class DriftAppDelegate: NSObject, UIApplicationDelegate {
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
         if RuntimeEnvironment.isNativeDevice {
-            MobileAds.shared.start()
+            GADMobileAds.sharedInstance().start(completionHandler: nil)
         }
         return true
     }
