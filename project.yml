@@ -11,7 +11,7 @@ settings:
 packages:
   GoogleMobileAds:
     url: https://github.com/googleads/swift-package-manager-google-mobile-ads.git
-    exactVersion: 11.13.0
+    from: "11.13.0"
 targets:
   DRIFT:
     type: application

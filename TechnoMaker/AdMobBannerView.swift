@@ -4,17 +4,46 @@ import UIKit
 
 private let driftAdMobBannerUnitID = "ca-app-pub-9404799280370656/8085919905"
 
-struct AdMobBannerView: UIViewRepresentable {
-    func makeUIView(context: Context) -> GADBannerView {
-        let banner = GADBannerView(adSize: GADAdSizeBanner)
-        banner.adUnitID = driftAdMobBannerUnitID
-        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-           let rootVC = windowScene.windows.first?.rootViewController {
-            banner.rootViewController = rootVC
+struct AdMobBannerView: View {
+    var body: some View {
+        GeometryReader { proxy in
+            let width = max(proxy.size.width, 320)
+            let adSize = currentOrientationAnchoredAdaptiveBanner(width: width)
+            BannerViewContainer(
+                adUnitID: driftAdMobBannerUnitID,
+                adSize: adSize
+            )
+            .frame(width: adSize.size.width, height: adSize.size.height)
+            .frame(maxWidth: .infinity)
         }
-        banner.load(GADRequest())
+        .frame(height: 64)
+    }
+}
+
+private struct BannerViewContainer: UIViewRepresentable {
+    let adUnitID: String
+    let adSize: AdSize
+
+    func makeUIView(context: Context) -> BannerView {
+        let banner = BannerView(adSize: adSize)
+        banner.adUnitID = adUnitID
+        banner.rootViewController = UIApplication.shared.topViewController
+        banner.load(Request())
         return banner
     }
 
-    func updateUIView(_ uiView: GADBannerView, context: Context) {}
+    func updateUIView(_ uiView: BannerView, context: Context) {
+        uiView.adSize = adSize
+        uiView.rootViewController = UIApplication.shared.topViewController
+    }
+}
+
+private extension UIApplication {
+    var topViewController: UIViewController? {
+        connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows)
+            .first { $0.isKeyWindow }?
+            .rootViewController
+    }
 }
