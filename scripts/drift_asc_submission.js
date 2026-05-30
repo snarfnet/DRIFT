@@ -276,7 +276,7 @@ async function waitForProcessedBuild(expectedBuildNumber) {
   for (let attempt = 1; attempt <= 60; attempt += 1) {
     const build = await latestBuild();
     if (build) {
-      const buildNumber = String(build.attributes.buildNumber || '');
+      const buildNumber = String(build.attributes.buildNumber || build.attributes.version || '');
       const state = build.attributes.processingState;
       console.log(`Build processing: ${build.attributes.version} (${buildNumber}) ${state} attempt ${attempt}/60`);
       if ((!expected || buildNumber === expected) && state === 'VALID') return build;
