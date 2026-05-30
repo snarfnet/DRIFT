@@ -5,7 +5,7 @@ const crypto = require('crypto');
 
 const KEY_ID = process.env.ASC_KEY_ID || 'WDXGY9WX55';
 const ISSUER_ID = process.env.ASC_ISSUER_ID || '2be0734f-943a-4d61-9dc9-5d9045c46fec';
-const API_KEY_PATH = process.env.ASC_KEY_PATH || `${process.env.USERPROFILE}/.appstoreconnect/private_keys/AuthKey_${KEY_ID}.p8`;
+const API_KEY_PATH = process.env.ASC_KEY_PATH || `${process.env.HOME || process.env.USERPROFILE}/.appstoreconnect/private_keys/AuthKey_${KEY_ID}.p8`;
 const APP_ID = process.env.ASC_APP_ID || '6770727208';
 const VERSION_STRING = process.env.APP_VERSION || '1.0';
 const LOCALE = process.env.APP_LOCALE || 'ja';
@@ -241,11 +241,23 @@ async function createScreenshot(setId, filePath) {
 }
 
 async function uploadScreenshots(localizationId) {
-  const set = await getOrCreateScreenshotSet(localizationId, 'APP_IPHONE_67');
-  await deleteScreenshots(set.id);
-  const files = ['iphone-67-01-main.png', 'iphone-67-02-control.png', 'iphone-67-03-sequencer.png'];
-  for (const fileName of files) {
-    await createScreenshot(set.id, path.join(ROOT, 'AppStoreAssets', 'screenshots', fileName));
+  const screenshotGroups = [
+    {
+      displayType: 'APP_IPHONE_67',
+      files: ['iphone-67-01-main.png', 'iphone-67-02-control.png', 'iphone-67-03-sequencer.png'],
+    },
+    {
+      displayType: 'APP_IPAD_PRO_3GEN_129',
+      files: ['ipad-13-01-main.png', 'ipad-13-02-control.png', 'ipad-13-03-sequencer.png'],
+    },
+  ];
+
+  for (const group of screenshotGroups) {
+    const set = await getOrCreateScreenshotSet(localizationId, group.displayType);
+    await deleteScreenshots(set.id);
+    for (const fileName of group.files) {
+      await createScreenshot(set.id, path.join(ROOT, 'AppStoreAssets', 'screenshots', fileName));
+    }
   }
 }
 
@@ -254,8 +266,28 @@ async function latestProcessedBuild() {
   return response.data.find((build) => build.attributes.processingState === 'VALID') || response.data[0];
 }
 
-async function attachBuild(versionId) {
-  const build = await latestProcessedBuild();
+async function latestBuild() {
+  const response = await api('GET', `/v1/builds?filter[app]=${APP_ID}&sort=-uploadedDate&limit=10`);
+  return response.data[0] || null;
+}
+
+async function waitForProcessedBuild(expectedBuildNumber) {
+  const expected = expectedBuildNumber ? String(expectedBuildNumber) : null;
+  for (let attempt = 1; attempt <= 60; attempt += 1) {
+    const build = await latestBuild();
+    if (build) {
+      const buildNumber = String(build.attributes.buildNumber || '');
+      const state = build.attributes.processingState;
+      console.log(`Build processing: ${build.attributes.version} (${buildNumber}) ${state} attempt ${attempt}/60`);
+      if ((!expected || buildNumber === expected) && state === 'VALID') return build;
+    }
+    await delay(30000);
+  }
+  throw new Error(`Timed out waiting for processed build${expected ? ` ${expected}` : ''}.`);
+}
+
+async function attachBuild(versionId, build = null) {
+  build = build || await latestProcessedBuild();
   if (!build || build.attributes.processingState !== 'VALID') return build || null;
   await api('PATCH', `/v1/appStoreVersions/${versionId}/relationships/build`, {
     data: { type: 'builds', id: build.id },
@@ -470,7 +502,10 @@ async function getOrCreateReviewSubmission() {
 async function submitForReview() {
   const version = await getAppStoreVersion();
   console.log(`Version: ${version.attributes.versionString} (${version.attributes.appStoreState})`);
-  await attachBuild(version.id);
+  const build = process.env.EXPECT_BUILD_NUMBER
+    ? await waitForProcessedBuild(process.env.EXPECT_BUILD_NUMBER)
+    : null;
+  await attachBuild(version.id, build);
 
   const { submission, alreadySubmitted } = await getOrCreateReviewSubmission();
   if (alreadySubmitted) {
@@ -533,6 +568,24 @@ async function sync(options = {}) {
   console.log('DRIFT ASC sync completed.');
 }
 
+async function syncAndSubmit() {
+  const version = await getAppStoreVersion();
+  console.log(`Version: ${version.attributes.versionString} (${version.attributes.appStoreState})`);
+  await updateAppInfoLocalization();
+  await updateAgeRatingAndCategory();
+  await updateVersionAndAppRequirements(version.id);
+  await updatePricing();
+  const localization = await getLocalization(version.id);
+  await updateLocalization(localization.id);
+  await uploadScreenshots(localization.id);
+  await updateReviewDetails(version.id);
+  const build = process.env.EXPECT_BUILD_NUMBER
+    ? await waitForProcessedBuild(process.env.EXPECT_BUILD_NUMBER)
+    : await waitForProcessedBuild(null);
+  await attachBuild(version.id, build);
+  await submitForReview();
+}
+
 async function status() {
   const app = await api('GET', `/v1/apps/${APP_ID}`);
   const versions = await api('GET', `/v1/apps/${APP_ID}/appStoreVersions?filter[platform]=IOS&limit=10`);
@@ -547,7 +600,7 @@ async function status() {
 }
 
 const command = process.argv[2] || 'status';
-const actions = { sync, status, submit: submitForReview };
+const actions = { sync, status, submit: submitForReview, 'sync-submit': syncAndSubmit };
 (actions[command] || status)().catch((error) => {
   console.error(error.message);
   process.exit(1);

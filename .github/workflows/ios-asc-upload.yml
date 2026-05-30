@@ -6,7 +6,7 @@ on:
 jobs:
   upload:
     runs-on: macos-latest
-    timeout-minutes: 30
+    timeout-minutes: 90
 
     steps:
     - uses: actions/checkout@v6
@@ -105,3 +105,8 @@ jobs:
           -t ios \
           --apiKey WDXGY9WX55 \
           --apiIssuer 2be0734f-943a-4d61-9dc9-5d9045c46fec
+
+    - name: Sync App Store metadata and submit for review
+      env:
+        EXPECT_BUILD_NUMBER: ${{ env.BUILD_NUM }}
+      run: node scripts/drift_asc_submission.js sync-submit
