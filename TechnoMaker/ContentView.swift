@@ -512,10 +512,7 @@ private struct LedScope: View {
     var body: some View {
         HStack(alignment: .bottom, spacing: 3) {
             ForEach(0..<30, id: \.self) { index in
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(index % 5 == 0 ? Color.driftAmber : Color.driftCyan)
-                    .frame(width: 5, height: CGFloat(isPlaying ? ((index * 9) % 30 + 8) : ((index * 5) % 14 + 5)))
-                    .opacity(isPlaying ? 0.96 : 0.28)
+                LedBar(index: index, isPlaying: isPlaying)
             }
         }
         .frame(maxWidth: .infinity, minHeight: 38, alignment: .bottomLeading)
@@ -523,6 +520,33 @@ private struct LedScope: View {
         .background(Color.black.opacity(0.3))
         .clipShape(ChippedRect())
         .overlay(ChippedRect().stroke(Color.white.opacity(0.08), lineWidth: 1))
+    }
+}
+
+private struct LedBar: View {
+    let index: Int
+    let isPlaying: Bool
+
+    private var barColor: Color {
+        index.isMultiple(of: 5) ? .driftAmber : .driftCyan
+    }
+
+    private var barHeight: CGFloat {
+        if isPlaying {
+            return CGFloat((index * 9) % 30 + 8)
+        }
+        return CGFloat((index * 5) % 14 + 5)
+    }
+
+    private var barOpacity: Double {
+        isPlaying ? 0.96 : 0.28
+    }
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: 2)
+            .fill(barColor)
+            .frame(width: 5, height: barHeight)
+            .opacity(barOpacity)
     }
 }
 
