@@ -43,26 +43,39 @@ jobs:
         echo "$ASC_API_KEY_BASE64" | base64 --decode > ~/.appstoreconnect/private_keys/AuthKey_WDXGY9WX55.p8
 
     - name: Clean up old certificates
-      continue-on-error: true
       run: |
-        pip install pyjwt requests --quiet --break-system-packages 2>/dev/null || pip install pyjwt requests --quiet
-        python3 -c "
-        import jwt, time, requests
+        python3 -m pip install --user pyjwt requests --quiet
+        python3 <<'PY'
+        import jwt, os, time, requests
         KEY_ID = 'WDXGY9WX55'
         ISSUER_ID = '2be0734f-943a-4d61-9dc9-5d9045c46fec'
-        with open('$HOME/.appstoreconnect/private_keys/AuthKey_WDXGY9WX55.p8') as f:
+        key_path = os.path.expanduser('~/.appstoreconnect/private_keys/AuthKey_WDXGY9WX55.p8')
+        with open(key_path) as f:
             key = f.read()
         token = jwt.encode({'iss': ISSUER_ID, 'iat': int(time.time()), 'exp': int(time.time()) + 600, 'aud': 'appstoreconnect-v1'}, key, algorithm='ES256', headers={'kid': KEY_ID})
         headers = {'Authorization': f'Bearer {token}'}
-        r = requests.get('https://api.appstoreconnect.apple.com/v1/certificates?limit=200&filter[certificateType]=DEVELOPMENT', headers=headers)
-        certs = r.json().get('data', [])
-        if len(certs) > 5:
-            for c in sorted(certs, key=lambda x: x['attributes'].get('expirationDate',''))[:-2]:
-                requests.delete(f'https://api.appstoreconnect.apple.com/v1/certificates/{c[\"id\"]}', headers=headers)
-            print(f'Cleaned {len(certs)-2} old certificates')
-        else:
-            print(f'{len(certs)} certificates, no cleanup needed')
-        "
+        deleted = set()
+
+        def cleanup(cert_type, keep):
+            url = f'https://api.appstoreconnect.apple.com/v1/certificates?limit=200&filter[certificateType]={cert_type}'
+            response = requests.get(url, headers=headers, timeout=30)
+            if not response.ok:
+                print(f'{cert_type}: lookup skipped ({response.status_code})')
+                return
+            certs = response.json().get('data', [])
+            certs = sorted(certs, key=lambda item: item['attributes'].get('expirationDate', ''))
+            stale = [cert for cert in certs[:-keep] if cert['id'] not in deleted]
+            for cert in stale:
+                delete_response = requests.delete(f'https://api.appstoreconnect.apple.com/v1/certificates/{cert["id"]}', headers=headers, timeout=30)
+                delete_response.raise_for_status()
+                deleted.add(cert['id'])
+            print(f'{cert_type}: {len(certs)} found, {len(stale)} revoked, {min(len(certs), keep)} kept')
+
+        for cert_type in ('IOS_DEVELOPMENT', 'DEVELOPMENT'):
+            cleanup(cert_type, keep=1)
+        for cert_type in ('IOS_DISTRIBUTION', 'DISTRIBUTION'):
+            cleanup(cert_type, keep=2)
+        PY
 
     - name: Build Archive
       run: |
@@ -72,6 +85,7 @@ jobs:
           -destination "generic/platform=iOS" \
           -archivePath build/DRIFT.xcarchive \
           CODE_SIGN_STYLE=Automatic \
+          CODE_SIGN_IDENTITY="Apple Distribution" \
           DEVELOPMENT_TEAM=83VGKGSQUH \
           -allowProvisioningUpdates \
           -authenticationKeyPath ~/.appstoreconnect/private_keys/AuthKey_WDXGY9WX55.p8 \
