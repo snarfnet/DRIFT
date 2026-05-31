@@ -10,8 +10,11 @@ struct ContentView: View {
 
             GeometryReader { proxy in
                 if proxy.size.width >= 700 {
-                    iPadDeck(width: proxy.size.width)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    ScrollView(showsIndicators: false) {
+                        iPadDeck(width: proxy.size.width)
+                            .padding(.top, max(proxy.safeAreaInsets.top, 18))
+                            .frame(maxWidth: .infinity, alignment: .top)
+                    }
                 } else {
                     ScrollView(showsIndicators: false) {
                         phoneDeck
@@ -70,7 +73,7 @@ struct ContentView: View {
             }
         }
         .padding(.horizontal, 20)
-        .padding(.top, 20)
+        .padding(.top, 0)
         .padding(.bottom, RuntimeEnvironment.isNativeDevice ? 90 : 30)
     }
 

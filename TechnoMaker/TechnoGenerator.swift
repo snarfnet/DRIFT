@@ -13,6 +13,7 @@ class TechnoGenerator: NSObject, ObservableObject {
     private var engine: AVAudioEngine?
     private var mixer: AVAudioMixerNode?
     private var reverbUnit: AVAudioUnitReverb?
+    private var interruptionObserver: NSObjectProtocol?
     private var playbackTimer: Timer?
     private var stepIndex = 0
     private let keys = [261.63, 277.18, 293.66, 311.13, 329.63, 349.23, 369.99, 392.00, 415.30, 440.00, 466.16, 493.88]
@@ -28,10 +29,8 @@ class TechnoGenerator: NSObject, ObservableObject {
 
     private func setupAudio() {
         let newEngine = AVAudioEngine()
-        let newMixer = AVAudioMixerNode()
-        newEngine.attach(newMixer)
         engine = newEngine
-        mixer = newMixer
+        mixer = newEngine.mainMixerNode
     }
 
     private func configureAudioSession() {
@@ -43,7 +42,8 @@ class TechnoGenerator: NSObject, ObservableObject {
             print("Audio session error: \(error)")
         }
 
-        NotificationCenter.default.addObserver(
+        if interruptionObserver != nil { return }
+        interruptionObserver = NotificationCenter.default.addObserver(
             forName: AVAudioSession.interruptionNotification,
             object: nil, queue: .main
         ) { [weak self] notification in
@@ -322,12 +322,13 @@ class TechnoGenerator: NSObject, ObservableObject {
         setupAudio()
         guard let engine = engine, let mixer = mixer else { return }
 
-        // Use hardware output format for the entire graph to avoid sample rate mismatch on iOS 26
         let hwFormat = engine.outputNode.outputFormat(forBus: 0)
-        guard let safeFormat = (hwFormat.sampleRate > 0 && hwFormat.channelCount > 0)
-            ? hwFormat
-            : AVAudioFormat(standardFormatWithSampleRate: 44100, channels: 2)
-        else { return }
+        let safeSampleRate = hwFormat.sampleRate > 0 ? hwFormat.sampleRate : 44100
+        let safeChannels = AVAudioChannelCount(min(max(hwFormat.channelCount, 1), 2))
+        guard let safeFormat = AVAudioFormat(
+            standardFormatWithSampleRate: safeSampleRate,
+            channels: safeChannels
+        ) else { return }
 
         sampleRate = safeFormat.sampleRate
         outputFormat = safeFormat
@@ -339,8 +340,6 @@ class TechnoGenerator: NSObject, ObservableObject {
             engine.connect(node, to: mixer, format: safeFormat)
             playerPool.append(node)
         }
-
-        engine.connect(mixer, to: engine.outputNode, format: safeFormat)
 
         // 全ノード接続後に prepare → start
         engine.prepare()
@@ -376,6 +375,8 @@ class TechnoGenerator: NSObject, ObservableObject {
         poolIndex = 0
         isEngineConfigured = false
         outputFormat = nil
+        engine = nil
+        mixer = nil
     }
 
     // 808 キック音生成（スタイル依存）
@@ -548,7 +549,7 @@ class TechnoGenerator: NSObject, ObservableObject {
 
         buffer.frameLength = frameCount
         guard let channelData = buffer.floatChannelData else { return }
-        let channelCount = Int(format.channelCount)
+        let channelCount = Int(buffer.format.channelCount)
         for ch in 0..<channelCount {
             for (index, sample) in samples.enumerated() {
                 channelData[ch][index] = sample
