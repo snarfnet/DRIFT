@@ -45,7 +45,7 @@ jobs:
     - name: Clean up old certificates
       run: |
         python3 -m venv .cert-cleanup-venv
-        .cert-cleanup-venv/bin/python -m pip install pyjwt requests --quiet
+        .cert-cleanup-venv/bin/python -m pip install pyjwt requests cryptography --quiet
         .cert-cleanup-venv/bin/python <<'PY'
         import jwt, os, time, requests
         KEY_ID = 'WDXGY9WX55'
