@@ -8,34 +8,15 @@ struct ContentView: View {
         ZStack {
             DetroitBackplate()
 
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 14) {
-                    HeaderDeck(isPlaying: generator.isPlaying, tempo: generator.tempo)
-
-                    TransportDeck(
-                        isPlaying: generator.isPlaying,
-                        hasPattern: generator.generatedPattern != nil,
-                        generateAction: { generator.generateTechno() },
-                        playAction: togglePlayback
-                    )
-
-                    MachinePanel(title: "PATCH BAY") {
-                        StyleSelector(style: $generator.style)
-                        TempoDriveDeck(tempo: $generator.tempo, intensity: $generator.intensity)
-                        KeySelector(key: $generator.key, labels: keys)
+            GeometryReader { proxy in
+                if proxy.size.width >= 700 {
+                    iPadDeck(width: proxy.size.width)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                } else {
+                    ScrollView(showsIndicators: false) {
+                        phoneDeck
                     }
-
-                    if let pattern = generator.generatedPattern {
-                        SequencerPanel(pattern: pattern, currentStep: generator.isPlaying ? generator.currentStep : nil)
-                    } else {
-                        EmptySequencerPanel()
-                    }
-
-                    MixerPanel()
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 18)
-                .padding(.bottom, RuntimeEnvironment.isNativeDevice ? 84 : 28)
             }
         }
         .safeAreaInset(edge: .bottom) {
@@ -47,6 +28,69 @@ struct ContentView: View {
             }
         }
         .preferredColorScheme(.dark)
+    }
+
+    private var phoneDeck: some View {
+        VStack(spacing: 14) {
+            HeaderDeck(isPlaying: generator.isPlaying, tempo: generator.tempo)
+            transportDeck
+
+            MachinePanel(title: "PATCH BAY") {
+                StyleSelector(style: $generator.style)
+                TempoDriveDeck(tempo: $generator.tempo, intensity: $generator.intensity)
+                KeySelector(key: $generator.key, labels: keys)
+            }
+
+            sequencerDeck
+            MixerPanel()
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 18)
+        .padding(.bottom, RuntimeEnvironment.isNativeDevice ? 84 : 28)
+    }
+
+    private func iPadDeck(width: CGFloat) -> some View {
+        VStack(spacing: 14) {
+            HeaderDeck(isPlaying: generator.isPlaying, tempo: generator.tempo)
+            transportDeck
+
+            HStack(alignment: .top, spacing: 14) {
+                MachinePanel(title: "PATCH BAY") {
+                    StyleSelector(style: $generator.style)
+                    TempoDriveDeck(tempo: $generator.tempo, intensity: $generator.intensity)
+                    KeySelector(key: $generator.key, labels: keys)
+                }
+                .frame(width: min(width * 0.54, 560))
+
+                VStack(spacing: 14) {
+                    sequencerDeck
+                    MixerPanel()
+                }
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 20)
+        .padding(.bottom, RuntimeEnvironment.isNativeDevice ? 90 : 30)
+    }
+
+    private var transportDeck: some View {
+        TransportDeck(
+            isPlaying: generator.isPlaying,
+            hasPattern: generator.generatedPattern != nil,
+            generateAction: { generator.generateTechno() },
+            playAction: togglePlayback
+        )
+    }
+
+    private var sequencerDeck: some View {
+        Group {
+            if let pattern = generator.generatedPattern {
+                SequencerPanel(pattern: pattern, currentStep: generator.isPlaying ? generator.currentStep : nil)
+            } else {
+                EmptySequencerPanel()
+            }
+        }
     }
 
     private func togglePlayback() {

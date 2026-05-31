@@ -200,18 +200,15 @@ def mixer(draw, x, y, w, h, scale):
 
 
 def base_ui(size, mode):
+    if size[0] > 1500:
+        return ipad_ui(size, mode)
+
     img = cover_background(size)
     draw = ImageDraw.Draw(img, "RGBA")
     scale = size[0] / 1290
     margin = 54 * scale
     panel_w = size[0] - margin * 2
     y = 72 * scale
-
-    if size[0] > 1500:
-        scale = size[0] / 2064
-        margin = 130 * scale
-        panel_w = size[0] - margin * 2
-        y = 112 * scale
 
     panel(draw, (margin, y, panel_w, 370 * scale), "SALVAGED UNIT")
     draw_text(draw, (margin + 48 * scale, y + 74 * scale), "DRIFT", int(84 * scale), COLORS["bone"], True)
@@ -242,6 +239,54 @@ def base_ui(size, mode):
         y += 494 * scale
         panel(draw, (margin, y, panel_w, 330 * scale), "SCRAP MIXER")
         mixer(draw, margin + 38 * scale, y + 76 * scale, panel_w - 76 * scale, 230 * scale, scale)
+
+    return img.convert("RGB")
+
+
+def ipad_ui(size, mode):
+    img = cover_background(size)
+    draw = ImageDraw.Draw(img, "RGBA")
+    scale = size[0] / 1032
+    margin = 20 * scale
+    panel_w = size[0] - margin * 2
+    y = 20 * scale
+
+    panel(draw, (margin, y, panel_w, 178 * scale), "SALVAGED UNIT")
+    draw_text(draw, (margin + 24 * scale, y + 38 * scale), "DRIFT", int(45 * scale), COLORS["bone"], True)
+    draw_text(draw, (margin + 26 * scale, y + 88 * scale), "TECHNO ENGINE", int(12 * scale), COLORS["amber"], True)
+    draw_text(draw, (margin + panel_w - 24 * scale, y + 40 * scale), "READY", int(12 * scale), COLORS["cyan"], True, "ra")
+    draw_text(draw, (margin + panel_w - 24 * scale, y + 62 * scale), "120 BPM", int(12 * scale), COLORS["cyan"], True, "ra")
+    led_scope(draw, margin + 24 * scale, y + 126 * scale, panel_w - 48 * scale, 38 * scale, mode == "sequencer")
+
+    y += 192 * scale
+    deck_button(draw, (margin, y, panel_w / 2 - 5 * scale, 54 * scale), "GENERATE", COLORS["amber"])
+    deck_button(draw, (margin + panel_w / 2 + 5 * scale, y, panel_w / 2 - 5 * scale, 54 * scale), "PLAY", COLORS["cyan"])
+
+    y += 68 * scale
+    gap = 14 * scale
+    left_w = min(size[0] * 0.54, 560 * scale)
+    right_w = panel_w - left_w - gap
+    left_x = margin
+    right_x = margin + left_w + gap
+
+    panel(draw, (left_x, y, left_w, 700 * scale), "PATCH BAY")
+    draw_text(draw, (left_x + 14 * scale, y + 48 * scale), "STYLE", int(12 * scale), rgba(COLORS["white"], 160), True)
+    style_buttons(draw, left_x + 14 * scale, y + 70 * scale, left_w - 28 * scale, 46 * scale)
+    rotor(draw, left_x + left_w / 2, y + 248 * scale, 125 * scale)
+    sliders(draw, left_x + 14 * scale, y + 396 * scale, left_w - 28 * scale, scale)
+    draw_text(draw, (left_x + 14 * scale, y + 572 * scale), "ROOT KEY", int(12 * scale), rgba(COLORS["white"], 160), True)
+    keys(draw, left_x + 14 * scale, y + 600 * scale, left_w - 28 * scale, scale)
+
+    panel(draw, (right_x, y, right_w, 480 * scale), "16 STEP SEQUENCER")
+    if mode == "main":
+        draw_text(draw, (right_x + 14 * scale, y + 62 * scale), "GENERATE TO PATCH A NEW LOOP", int(11 * scale), rgba(COLORS["white"], 125), True)
+        sequencer(draw, right_x + 14 * scale, y + 92 * scale, right_w - 28 * scale, scale, False)
+    else:
+        sequencer(draw, right_x + 14 * scale, y + 60 * scale, right_w - 28 * scale, scale, mode == "sequencer")
+
+    mix_y = y + 494 * scale
+    panel(draw, (right_x, mix_y, right_w, 260 * scale), "SCRAP MIXER")
+    mixer(draw, right_x + 14 * scale, mix_y + 52 * scale, right_w - 28 * scale, 154 * scale, scale)
 
     return img.convert("RGB")
 
