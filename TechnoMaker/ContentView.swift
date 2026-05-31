@@ -22,6 +22,14 @@ struct ContentView: View {
                 }
             }
         }
+        .safeAreaInset(edge: .top) {
+            if RuntimeEnvironment.isNativePad {
+                transportDeck
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 10)
+                    .background(Color.black.opacity(0.86))
+            }
+        }
         .safeAreaInset(edge: .bottom) {
             if RuntimeEnvironment.isNativeDevice {
                 AdRail()
@@ -55,7 +63,6 @@ struct ContentView: View {
     private func iPadDeck(width: CGFloat) -> some View {
         VStack(spacing: 14) {
             HeaderDeck(isPlaying: generator.isPlaying, tempo: generator.tempo)
-            transportDeck
 
             HStack(alignment: .top, spacing: 14) {
                 MachinePanel(title: "PATCH BAY") {

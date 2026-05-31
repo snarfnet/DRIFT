@@ -6,6 +6,10 @@ enum RuntimeEnvironment {
         !UIDevice.current.model.localizedCaseInsensitiveContains("iPad")
     }
 
+    static var isNativePad: Bool {
+        UIDevice.current.userInterfaceIdiom == .pad
+    }
+
     /// iPhone/iPad 両方の実機で true（シミュレータ・Mac Catalyst は除外）
     static var isNativeDevice: Bool {
         #if targetEnvironment(simulator)

@@ -1,7 +1,7 @@
 import Foundation
 import AVFoundation
 
-class TechnoGenerator: NSObject, ObservableObject {
+class TechnoGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
     @Published var tempo: Double = 120  // ディープテクノ向けにデフォルト遅めに
     @Published var intensity: Double = 0.5  // 0=minimal, 1=industrial
     @Published var key: Int = 0  // C, C#, D, etc
@@ -17,6 +17,7 @@ class TechnoGenerator: NSObject, ObservableObject {
     private var playbackTimer: Timer?
     private var stepIndex = 0
     private let keys = [261.63, 277.18, 293.66, 311.13, 329.63, 349.23, 369.99, 392.00, 415.30, 440.00, 466.16, 493.88]
+    private var activePlayers: [AVAudioPlayer] = []
 
     // オシレーター状態
     private var phase: Float = 0
@@ -319,6 +320,9 @@ class TechnoGenerator: NSObject, ObservableObject {
     private func ensureEngineReady() {
         guard !isEngineConfigured else { return }
         configureAudioSession()
+        sampleRate = 44100
+        isEngineConfigured = true
+        return
         setupAudio()
         guard let engine = engine, let mixer = mixer else { return }
 
@@ -372,6 +376,8 @@ class TechnoGenerator: NSObject, ObservableObject {
             }
         }
         playerPool.removeAll()
+        activePlayers.forEach { $0.stop() }
+        activePlayers.removeAll()
         poolIndex = 0
         isEngineConfigured = false
         outputFormat = nil
@@ -529,6 +535,19 @@ class TechnoGenerator: NSObject, ObservableObject {
 
     private func playAudioSamples(_ samples: [Float]) {
         guard !samples.isEmpty, isEngineConfigured else { return }
+        activePlayers.removeAll { !$0.isPlaying }
+
+        do {
+            let player = try AVAudioPlayer(data: wavData(from: samples))
+            player.delegate = self
+            player.prepareToPlay()
+            activePlayers.append(player)
+            player.play()
+        } catch {
+            print("Audio player error: \(error)")
+        }
+        return
+
         guard !playerPool.isEmpty, let format = outputFormat else { return }
         guard let engine = engine else { return }
 
@@ -562,6 +581,51 @@ class TechnoGenerator: NSObject, ObservableObject {
         poolIndex += 1
         guard node.engine != nil else { return }
         node.scheduleBuffer(buffer, completionHandler: nil)
+    }
+
+    private func wavData(from samples: [Float]) -> Data {
+        let clamped = samples.map { Int16(max(-1, min(1, $0)) * Float(Int16.max)) }
+        let dataSize = UInt32(clamped.count * 2)
+        var data = Data()
+
+        func appendString(_ value: String) {
+            data.append(value.data(using: .ascii)!)
+        }
+
+        func appendUInt16(_ value: UInt16) {
+            var little = value.littleEndian
+            data.append(Data(bytes: &little, count: MemoryLayout<UInt16>.size))
+        }
+
+        func appendUInt32(_ value: UInt32) {
+            var little = value.littleEndian
+            data.append(Data(bytes: &little, count: MemoryLayout<UInt32>.size))
+        }
+
+        appendString("RIFF")
+        appendUInt32(36 + dataSize)
+        appendString("WAVE")
+        appendString("fmt ")
+        appendUInt32(16)
+        appendUInt16(1)
+        appendUInt16(1)
+        appendUInt32(UInt32(sampleRate))
+        appendUInt32(UInt32(sampleRate) * 2)
+        appendUInt16(2)
+        appendUInt16(16)
+        appendString("data")
+        appendUInt32(dataSize)
+
+        for sample in clamped {
+            var little = sample.littleEndian
+            data.append(Data(bytes: &little, count: MemoryLayout<Int16>.size))
+        }
+
+        return data
+    }
+
+    func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        activePlayers.removeAll { $0 === player }
     }
 }
 
