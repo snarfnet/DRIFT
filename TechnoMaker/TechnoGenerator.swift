@@ -267,6 +267,8 @@ class TechnoGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
 
             let step = self.stepIndex % 16
             self.currentStep = step
+            self.stepIndex += 1
+            return
 
             // ドラム
             if pattern.drums.kick[step] {

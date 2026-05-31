@@ -23,12 +23,10 @@ struct ContentView: View {
             }
         }
         .safeAreaInset(edge: .top) {
-            if RuntimeEnvironment.isNativePad {
-                transportDeck
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 10)
-                    .background(Color.black.opacity(0.86))
-            }
+            transportDeck
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(Color.black.opacity(0.9))
         }
         .safeAreaInset(edge: .bottom) {
             if RuntimeEnvironment.isNativeDevice {
@@ -44,7 +42,6 @@ struct ContentView: View {
     private var phoneDeck: some View {
         VStack(spacing: 14) {
             HeaderDeck(isPlaying: generator.isPlaying, tempo: generator.tempo)
-            transportDeck
 
             MachinePanel(title: "PATCH BAY") {
                 StyleSelector(style: $generator.style)
