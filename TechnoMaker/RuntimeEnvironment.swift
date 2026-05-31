@@ -1,6 +1,11 @@
 import UIKit
 
 enum RuntimeEnvironment {
+    static var isRunningOnPad: Bool {
+        UIDevice.current.userInterfaceIdiom == .pad ||
+        UIDevice.current.model.localizedCaseInsensitiveContains("iPad")
+    }
+
     static var isNativePhone: Bool {
         UIDevice.current.userInterfaceIdiom == .phone &&
         !UIDevice.current.model.localizedCaseInsensitiveContains("iPad")

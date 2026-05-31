@@ -9,7 +9,11 @@ struct ContentView: View {
             DetroitBackplate()
 
             GeometryReader { proxy in
-                if proxy.size.width >= 700 {
+                if RuntimeEnvironment.isRunningOnPad {
+                    iPadReviewDeck(size: proxy.size, safeTop: proxy.safeAreaInsets.top)
+                        .frame(width: proxy.size.width, height: proxy.size.height, alignment: .top)
+                        .clipped()
+                } else if proxy.size.width >= 700 {
                     ScrollView(showsIndicators: false) {
                         iPadDeck(width: proxy.size.width)
                             .padding(.top, max(proxy.safeAreaInsets.top, 18))
@@ -23,13 +27,15 @@ struct ContentView: View {
             }
         }
         .safeAreaInset(edge: .top) {
-            transportDeck
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
-                .background(Color.black.opacity(0.9))
+            if !RuntimeEnvironment.isRunningOnPad {
+                transportDeck
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(Color.black.opacity(0.9))
+            }
         }
         .safeAreaInset(edge: .bottom) {
-            if RuntimeEnvironment.isNativeDevice {
+            if RuntimeEnvironment.isNativePhone {
                 AdRail()
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
@@ -79,6 +85,39 @@ struct ContentView: View {
         .padding(.horizontal, 20)
         .padding(.top, 0)
         .padding(.bottom, RuntimeEnvironment.isNativeDevice ? 90 : 30)
+    }
+
+    private func iPadReviewDeck(size: CGSize, safeTop: CGFloat) -> some View {
+        let compact = size.height < 760
+
+        return VStack(spacing: compact ? 8 : 10) {
+            transportDeck
+
+            ReviewHeaderDeck(isPlaying: generator.isPlaying, tempo: generator.tempo)
+
+            MachinePanel(title: "PATCH BAY") {
+                StyleSelector(style: $generator.style)
+                SliderRow(label: "TEMPO", value: $generator.tempo, range: 80...160, color: .driftAmber, valueText: String(format: "%.0f BPM", generator.tempo))
+                SliderRow(label: "DRIVE", value: $generator.intensity, range: 0...1, color: .driftCyan, valueText: String(format: "%.0f%%", generator.intensity * 100))
+                if !compact {
+                    KeySelector(key: $generator.key, labels: keys)
+                }
+            }
+
+            sequencerDeck
+
+            if !compact {
+                MixerPanel()
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.top, max(safeTop, 12))
+        .padding(.bottom, 12)
+        .frame(maxWidth: 560)
+        .frame(width: size.width, height: size.height, alignment: .top)
+        .transaction { transaction in
+            transaction.animation = nil
+        }
     }
 
     private var transportDeck: some View {
@@ -171,6 +210,37 @@ private struct HeaderDeck: View {
             }
 
             LedScope(isPlaying: isPlaying)
+        }
+    }
+}
+
+private struct ReviewHeaderDeck: View {
+    let isPlaying: Bool
+    let tempo: Double
+
+    var body: some View {
+        MachinePanel(title: "SALVAGED UNIT") {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("DRIFT")
+                        .font(.system(size: 30, weight: .black, design: .monospaced))
+                        .tracking(5)
+                        .foregroundStyle(LinearGradient(colors: [.driftBone, .driftCyan], startPoint: .top, endPoint: .bottom))
+                    Text("TECHNO ENGINE")
+                        .font(.system(size: 10, weight: .heavy, design: .monospaced))
+                        .tracking(2)
+                        .foregroundColor(.driftAmber)
+                }
+
+                Spacer()
+
+                VStack(alignment: .trailing, spacing: 6) {
+                    StatusLamp(isOn: isPlaying)
+                    Text("\(tempo, specifier: "%.0f") BPM")
+                        .font(.system(size: 12, weight: .heavy, design: .monospaced))
+                        .foregroundColor(.driftCyan)
+                }
+            }
         }
     }
 }
