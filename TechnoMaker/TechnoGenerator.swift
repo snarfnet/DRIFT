@@ -268,7 +268,7 @@ class TechnoGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
             let step = self.stepIndex % 16
             self.currentStep = step
             self.stepIndex += 1
-            return
+            if self.stepIndex < 0 {
 
             // ドラム
             if pattern.drums.kick[step] {
@@ -293,7 +293,8 @@ class TechnoGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
                 }
             }
 
-            self.stepIndex += 1
+                self.stepIndex += 1
+            }
         }
     }
 
@@ -324,7 +325,7 @@ class TechnoGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
         configureAudioSession()
         sampleRate = 44100
         isEngineConfigured = true
-        return
+        if false {
         setupAudio()
         guard let engine = engine, let mixer = mixer else { return }
 
@@ -363,6 +364,7 @@ class TechnoGenerator: NSObject, ObservableObject, AVAudioPlayerDelegate {
             playerPool.removeAll()
             poolIndex = 0
             return
+        }
         }
         isEngineConfigured = true
     }
