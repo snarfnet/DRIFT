@@ -10,9 +10,10 @@ struct ContentView: View {
 
             GeometryReader { proxy in
                 if RuntimeEnvironment.isRunningOnPad {
-                    iPadReviewDeck(size: proxy.size, safeTop: proxy.safeAreaInsets.top)
-                        .frame(width: proxy.size.width, height: proxy.size.height, alignment: .top)
-                        .clipped()
+                    ScrollView(showsIndicators: false) {
+                        iPadReviewDeck(size: proxy.size, safeTop: proxy.safeAreaInsets.top)
+                            .frame(width: proxy.size.width, alignment: .top)
+                    }
                 } else if proxy.size.width >= 700 {
                     ScrollView(showsIndicators: false) {
                         iPadDeck(width: proxy.size.width)
@@ -88,9 +89,7 @@ struct ContentView: View {
     }
 
     private func iPadReviewDeck(size: CGSize, safeTop: CGFloat) -> some View {
-        let compact = size.height < 760
-
-        return VStack(spacing: compact ? 8 : 10) {
+        VStack(spacing: 10) {
             transportDeck
 
             ReviewHeaderDeck(isPlaying: generator.isPlaying, tempo: generator.tempo)
@@ -99,22 +98,18 @@ struct ContentView: View {
                 StyleSelector(style: $generator.style)
                 SliderRow(label: "TEMPO", value: $generator.tempo, range: 80...160, color: .driftAmber, valueText: String(format: "%.0f BPM", generator.tempo))
                 SliderRow(label: "DRIVE", value: $generator.intensity, range: 0...1, color: .driftCyan, valueText: String(format: "%.0f%%", generator.intensity * 100))
-                if !compact {
-                    KeySelector(key: $generator.key, labels: keys)
-                }
+                KeySelector(key: $generator.key, labels: keys)
             }
 
             sequencerDeck
 
-            if !compact {
-                MixerPanel()
-            }
+            MixerPanel()
         }
         .padding(.horizontal, 14)
         .padding(.top, max(safeTop, 12))
         .padding(.bottom, 12)
         .frame(maxWidth: 560)
-        .frame(width: size.width, height: size.height, alignment: .top)
+        .frame(width: size.width, alignment: .top)
         .transaction { transaction in
             transaction.animation = nil
         }
