@@ -27,20 +27,19 @@ struct ContentView: View {
                 }
             }
         }
-        .safeAreaInset(edge: .top) {
-            if !RuntimeEnvironment.isRunningOnPad {
+        .safeAreaInset(edge: .bottom) {
+            VStack(spacing: 0) {
                 transportDeck
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
                     .background(Color.black.opacity(0.9))
-            }
-        }
-        .safeAreaInset(edge: .bottom) {
-            if RuntimeEnvironment.isNativePhone {
-                AdRail()
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(Color.black.opacity(0.72))
+
+                if RuntimeEnvironment.isNativePhone {
+                    AdRail()
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(Color.black.opacity(0.72))
+                }
             }
         }
         .preferredColorScheme(.dark)
@@ -90,8 +89,6 @@ struct ContentView: View {
 
     private func iPadReviewDeck(size: CGSize, safeTop: CGFloat) -> some View {
         VStack(spacing: 10) {
-            transportDeck
-
             ReviewHeaderDeck(isPlaying: generator.isPlaying, tempo: generator.tempo)
 
             MachinePanel(title: "PATCH BAY") {
