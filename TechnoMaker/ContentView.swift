@@ -8,21 +8,22 @@ struct ContentView: View {
         ZStack {
             DetroitBackplate()
 
-            GeometryReader { proxy in
-                if RuntimeEnvironment.isRunningOnPad {
-                    ScrollView(showsIndicators: false) {
-                        iPadReviewDeck(size: proxy.size, safeTop: proxy.safeAreaInsets.top)
-                            .frame(width: proxy.size.width, alignment: .top)
-                    }
-                } else if proxy.size.width >= 700 {
-                    ScrollView(showsIndicators: false) {
-                        iPadDeck(width: proxy.size.width)
-                            .padding(.top, max(proxy.safeAreaInsets.top, 18))
-                            .frame(maxWidth: .infinity, alignment: .top)
-                    }
-                } else {
-                    ScrollView(showsIndicators: false) {
-                        phoneDeck
+            if RuntimeEnvironment.isRunningOnPad {
+                ScrollView(showsIndicators: false) {
+                    iPadReviewDeck()
+                }
+            } else {
+                GeometryReader { proxy in
+                    if proxy.size.width >= 700 {
+                        ScrollView(showsIndicators: false) {
+                            iPadDeck(width: proxy.size.width)
+                                .padding(.top, max(proxy.safeAreaInsets.top, 18))
+                                .frame(maxWidth: .infinity, alignment: .top)
+                        }
+                    } else {
+                        ScrollView(showsIndicators: false) {
+                            phoneDeck
+                        }
                     }
                 }
             }
@@ -87,7 +88,7 @@ struct ContentView: View {
         .padding(.bottom, RuntimeEnvironment.isNativeDevice ? 90 : 30)
     }
 
-    private func iPadReviewDeck(size: CGSize, safeTop: CGFloat) -> some View {
+    private func iPadReviewDeck() -> some View {
         VStack(spacing: 10) {
             ReviewHeaderDeck(isPlaying: generator.isPlaying, tempo: generator.tempo)
 
@@ -103,13 +104,10 @@ struct ContentView: View {
             MixerPanel()
         }
         .padding(.horizontal, 14)
-        .padding(.top, max(safeTop, 12))
+        .padding(.top, 12)
         .padding(.bottom, 12)
         .frame(maxWidth: 560)
-        .frame(width: size.width, alignment: .top)
-        .transaction { transaction in
-            transaction.animation = nil
-        }
+        .frame(maxWidth: .infinity)
     }
 
     private var transportDeck: some View {
