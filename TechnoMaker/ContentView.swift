@@ -8,28 +8,15 @@ struct ContentView: View {
         ZStack {
             DetroitBackplate()
 
-            if RuntimeEnvironment.isRunningOnPad {
+            VStack(spacing: 0) {
                 ScrollView(showsIndicators: false) {
-                    iPadReviewDeck()
-                }
-            } else {
-                GeometryReader { proxy in
-                    if proxy.size.width >= 700 {
-                        ScrollView(showsIndicators: false) {
-                            iPadDeck(width: proxy.size.width)
-                                .padding(.top, max(proxy.safeAreaInsets.top, 18))
-                                .frame(maxWidth: .infinity, alignment: .top)
-                        }
+                    if RuntimeEnvironment.isRunningOnPad {
+                        iPadReviewDeck()
                     } else {
-                        ScrollView(showsIndicators: false) {
-                            phoneDeck
-                        }
+                        phoneDeck
                     }
                 }
-            }
-        }
-        .safeAreaInset(edge: .bottom) {
-            VStack(spacing: 0) {
+
                 transportDeck
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
@@ -62,30 +49,6 @@ struct ContentView: View {
         .padding(.horizontal, 16)
         .padding(.top, 18)
         .padding(.bottom, RuntimeEnvironment.isNativeDevice ? 84 : 28)
-    }
-
-    private func iPadDeck(width: CGFloat) -> some View {
-        VStack(spacing: 14) {
-            HeaderDeck(isPlaying: generator.isPlaying, tempo: generator.tempo)
-
-            HStack(alignment: .top, spacing: 14) {
-                MachinePanel(title: "PATCH BAY") {
-                    StyleSelector(style: $generator.style)
-                    TempoDriveDeck(tempo: $generator.tempo, intensity: $generator.intensity)
-                    KeySelector(key: $generator.key, labels: keys)
-                }
-                .frame(width: min(width * 0.54, 560))
-
-                VStack(spacing: 14) {
-                    sequencerDeck
-                    MixerPanel()
-                }
-                .frame(maxWidth: .infinity)
-            }
-        }
-        .padding(.horizontal, 20)
-        .padding(.top, 0)
-        .padding(.bottom, RuntimeEnvironment.isNativeDevice ? 90 : 30)
     }
 
     private func iPadReviewDeck() -> some View {
