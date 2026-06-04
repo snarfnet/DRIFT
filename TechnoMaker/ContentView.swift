@@ -5,31 +5,28 @@ struct ContentView: View {
     private let keys = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 
     var body: some View {
-        ZStack {
-            DetroitBackplate()
-
-            VStack(spacing: 0) {
-                ScrollView(showsIndicators: false) {
-                    if RuntimeEnvironment.isRunningOnPad {
-                        iPadReviewDeck()
-                    } else {
-                        phoneDeck
-                    }
-                }
-
-                transportDeck
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-                    .background(Color.black.opacity(0.9))
-
-                if RuntimeEnvironment.isNativePhone {
-                    AdRail()
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(Color.black.opacity(0.72))
+        VStack(spacing: 0) {
+            ScrollView(showsIndicators: false) {
+                if RuntimeEnvironment.isRunningOnPad {
+                    iPadReviewDeck()
+                } else {
+                    phoneDeck
                 }
             }
+
+            transportDeck
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(Color.black.opacity(0.9))
+
+            if RuntimeEnvironment.isNativePhone {
+                AdRail()
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Color.black.opacity(0.72))
+            }
         }
+        .background { DetroitBackplate() }
         .preferredColorScheme(.dark)
     }
 
