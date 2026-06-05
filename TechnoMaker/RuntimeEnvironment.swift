@@ -15,6 +15,10 @@ enum RuntimeEnvironment {
         UIDevice.current.userInterfaceIdiom == .pad
     }
 
+    static var isScreenshotMode: Bool {
+        ProcessInfo.processInfo.arguments.contains("DRIFT_SCREENSHOT_MODE")
+    }
+
     /// iPhone/iPad 両方の実機で true（シミュレータ・Mac Catalyst は除外）
     static var isNativeDevice: Bool {
         #if targetEnvironment(simulator)

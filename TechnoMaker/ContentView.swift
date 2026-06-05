@@ -28,6 +28,11 @@ struct ContentView: View {
         }
         .background { DetroitBackplate() }
         .preferredColorScheme(.dark)
+        .task {
+            if RuntimeEnvironment.isScreenshotMode {
+                generator.generateTechno()
+            }
+        }
     }
 
     private var phoneDeck: some View {
